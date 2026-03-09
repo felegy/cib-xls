@@ -1,0 +1,83 @@
+name: Release Builds
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.os_name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            os_name: linux
+            rid: linux-x64
+            archive: tar.gz
+          - os: windows-latest
+            os_name: windows
+            rid: win-x64
+            archive: zip
+          - os: macos-latest
+            os_name: macos
+            rid: osx-x64
+            archive: tar.gz
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Publish
+        run: >
+          dotnet publish ./cib-xls.csproj
+          -c Release
+          -r ${{ matrix.rid }}
+          --self-contained true
+          /p:PublishSingleFile=true
+          /p:IncludeNativeLibrariesForSelfExtract=true
+          /p:DebugType=None
+          /p:DebugSymbols=false
+          -o ./dist/${{ matrix.rid }}
+
+      - name: Create archive (zip)
+        if: matrix.archive == 'zip'
+        shell: pwsh
+        run: |
+          $name = "cib-xls-${{ github.event.release.tag_name || github.sha }}-${{ matrix.rid }}"
+          Compress-Archive -Path "./dist/${{ matrix.rid }}/*" -DestinationPath "./dist/$name.zip"
+
+      - name: Create archive (tar.gz)
+        if: matrix.archive == 'tar.gz'
+        run: |
+          NAME="cib-xls-${{ github.event.release.tag_name || github.sha }}-${{ matrix.rid }}"
+          tar -czf "./dist/$NAME.tar.gz" -C "./dist/${{ matrix.rid }}" .
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cib-xls-${{ matrix.rid }}
+          path: |
+            ./dist/*.zip
+            ./dist/*.tar.gz
+
+      - name: Upload asset to GitHub Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ./dist/*.zip
+            ./dist/*.tar.gz
