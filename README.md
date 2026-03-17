@@ -74,7 +74,3 @@ A workflow self-contained, single-file buildet keszit, majd `.zip` vagy `.tar.gz
 
 - A parser jelenleg a tipikus CIB tranzakcios mintara optimalizalt.
 - Elteto kivonat layout eseten finomhangolas szukseges lehet.
-
-## Licenc
-
-Belsos/egyedi hasznalatra keszult. Ha publikus repoba kerul, erdemes kulon `LICENSE` fajlt is hozzaadni.
